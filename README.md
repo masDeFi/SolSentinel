@@ -1,10 +1,17 @@
 # Validator Health Check
 
-This project performs a series of health, configuration, and security checks on your validator. The results are output in JSON format and can be posted to your website, Discord, or GitHub for transparency.
+This project performs a series of health, configuration, and security checks on your validator. The results are output in JSON format and can be posted to your Discord.
+
+## Coming soon  
+- More detailed checks
+- More notifcation options
+- Package update summaries
+- Suggested actions
+
 
 ## Project Structure
 ```
-/check-validator-health
+/solana-validoctor
 ├── README.md
 ├── .env                 # Your Discord webhook configuration
 ├── .env.example         # Template for .env file
@@ -58,7 +65,7 @@ Make sure the script is run with sufficient permissions so that it can access sy
 
 ## The Checks  
 
-### Package Updates Check  
+#### Package Updates Check  
 Ensures the number of pending OS package updates stays within an acceptable threshold.  
 
 - **Purpose:** Up to date packages are critical for security and stability.  
@@ -66,13 +73,14 @@ Ensures the number of pending OS package updates stays within an acceptable thre
 
 ---
 
-### Reboot Required Check  
+#### Reboot Required Check  
 Detects whether a system reboot is needed to complete the installation of critical updates (such as a new kernel or core library).  
 
 - **Purpose:** Guarantees that all security fixes and functionality improvements are actually active by confirming that any required reboot has been performed.  
 - **Recommended Action:** Schedule and perform a reboot whenever this check reports "required" to ensure the system is running the latest code.  
 
 
+  
 ## Contributing
 This project is open source—feel free to review and contribute!
 Reach out on X or Discord to connect.
