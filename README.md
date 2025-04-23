@@ -29,21 +29,6 @@ This project performs a series of health, configuration, and security checks on 
 
 ## Usage
 
-### Discord Setup
-1. In the root directory (`config-check/`), copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Edit `.env` and add your Discord webhook URL:
-   ```
-   DISCORD_WEBHOOK_URL="your-discord-webhook-url-here"
-   ```
-   
-   You can also set the webhook URL as an environment variable:
-   ```bash
-   export DISCORD_WEBHOOK_URL="your-discord-webhook-url-here"
-   ```
-
 ### Running Checks
 
 Run the main script with:
@@ -62,6 +47,20 @@ Options include:
 
 Make sure the script is run with sufficient permissions so that it can access system information and run commands like sysctl.    
 
+### Discord Setup (Optional)
+1. In the root directory (`config-check/`), copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
+2. Edit `.env` and add your Discord webhook URL:
+   ```
+   DISCORD_WEBHOOK_URL="your-discord-webhook-url-here"
+   ```
+   
+   You can also set the webhook URL as an environment variable:
+   ```bash
+   export DISCORD_WEBHOOK_URL="your-discord-webhook-url-here"
+   ```
 
 ## The Checks  
 
