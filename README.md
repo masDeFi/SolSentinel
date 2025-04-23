@@ -82,5 +82,5 @@ Detects whether a system reboot is needed to complete the installation of critic
 
   
 ## Contributing
-This project is open source—feel free to review and contribute!
-Reach out on X or Discord to connect.
+This project is open source. Please review and contribute!
+Reach out on [X (@MAS_DeFi)](https://x.com/MAS_DeFi) or [Discord](https://discordapp.com/users/masdefi_62609) to connect.
