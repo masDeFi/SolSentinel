@@ -233,10 +233,12 @@ def run_health_checks():
     """Run all health-related checks and return a list of results."""
     results = []
     results.append(check_cpu_governor())
-    # results.append(check_swap_disabled())
+    results.append(check_swap_disabled())
     results.append(check_cpu_boost())
-    # results.append(check_pstate_driver())
-    # results.append(check_ntp_sync())
     results.append(check_package_updates())
     results.append(check_reboot_required())
+    # Advanced Checks
+    # results.append(check_pstate_driver())
+    # results.append(check_ntp_sync())
+    
     return results
