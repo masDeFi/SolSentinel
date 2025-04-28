@@ -27,7 +27,7 @@
 │   ├── health.py
 │   ├── config.py
 │   └── security.py
-├── run_checks.py
+├── run_sentinel.py
 ├── output/
 │   └── latest_report.json
 └── post/
