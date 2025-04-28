@@ -1,17 +1,25 @@
-# Validator Health Check
+# SolSentinel
 
-This project performs a series of health, configuration, and security checks on your validator. The results are output in JSON format and can be posted to your Discord.
+**SolSentinel** is an intelligent monitoring and advisory system for Solana validators. It performs health, configuration, and security checks on your validator, helping you maintain high performance, minimize downtime, and protect your stakers.  
+
+#### SolSentinel helps you:
+
+- Detect early signs of performance degradation  
+- Identify configuration or system issues
+- Monitor validator security posture
+- Stay proactive to protect your stakers and uptime
+- Build trust with your stakers through transparency and reliability
 
 ## Coming soon  
-- More detailed checks
+- Advanced checks
 - More notifcation options
 - Package update summaries
-- Suggested actions
+- Action suggestions
 
 
 ## Project Structure
 ```
-/solana-validoctor
+/SolSentinel
 ├── README.md
 ├── .env                 # Your Discord webhook configuration
 ├── .env.example         # Template for .env file
@@ -34,7 +42,7 @@ This project performs a series of health, configuration, and security checks on 
 Run the main script with:
 
 ```bash
-python3 run_checks.py [OPTIONS]  
+python3 run_sentinel.py [OPTIONS]  
 ```
 
 Options include:
