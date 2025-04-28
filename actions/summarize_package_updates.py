@@ -88,5 +88,7 @@ def main():
             print(f"  - {pkg['name']}: {pkg['old_version']} → {pkg['new_version']}")
         print()
 
+    print("To update all packages, run: sudo apt upgrade")
+
 if __name__ == "__main__":
     main()
