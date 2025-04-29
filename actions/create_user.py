@@ -28,7 +28,7 @@ def create_user(new_user, set_password=False):
         print(f"❌ User '{new_user}' already exists. Aborting.")
         sys.exit(1)
 
-    # Option 1: Create user without a password (default, safer for setup automation)
+    # Option 1: Create user without a password (default, faster for setup automation)
     cmd_create_user = f"sudo adduser --disabled-password --gecos \"\" {new_user}"
     run_command(cmd_create_user)
 
