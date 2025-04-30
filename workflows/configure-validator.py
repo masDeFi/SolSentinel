@@ -5,6 +5,7 @@ To Run
 git clone https://github.com/masDeFi/SolSentinel.git
 apt install python3-pip
 pip install psutil
+cd SolSentinel
 To run: python3 workflows/configure-validator.py
 Update server 
  ->summarize_package_updates.py
@@ -81,13 +82,18 @@ def run_script(script):
 
 def main():
     print("Starting workflow at", datetime.now())
+    # Count total number of scripts
+    total_scripts = sum(len(actions) for _, actions in steps)
+    current_script = 1
+
     for section, actions in steps:
         print(f"\n=== {section} ===")
         logging.info(f"Section: {section}")
         for desc, script in actions:
-            print(f"-> {desc}")
+            print(f"[{current_script}/{total_scripts}] -> {desc}")
             logging.info(f"Step: {desc} ({script})")
             run_script(script)
+            current_script += 1
     print("\nWorkflow complete.")
     logging.info("Workflow complete.")
 
