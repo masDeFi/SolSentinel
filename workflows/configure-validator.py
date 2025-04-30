@@ -1,6 +1,10 @@
 """
 This workflow configures a new validator
-Assumes you just ssh'd in for the first time as root
+To Run
+#Assumes you just ssh'd in for the first time as root
+git clone https://github.com/masDeFi/SolSentinel.git
+apt install python3-pip
+pip install psutil
 To run: python3 workflows/configure-validator.py
 Update server 
  ->summarize_package_updates.py
@@ -30,20 +34,20 @@ logging.basicConfig(
 # Steps as described in config-validator.py
 steps = [
     ("Update server", [
-        ("Summarize package updates", "summarize_package_updates.py"),
-        ("Install package updates", "install_package_updates.py"),
+        ("Summarize package updates", "./actions/summarize_package_updates.py"),
+        ("Install package updates", "./actions/install_package_updates.py"),
     ]),
     ("Create user", [
-        ("Create user", "create_user.py"),
+        ("Create user", "./actions/create_user.py"),
     ]),
     ("Configure Security", [
-        ("Configure fail2ban", "configure_fail2ban.py"),
-        ("Disable auto updates", "diable_auto_updates.py"),
-        ("Configure SSH", "configure_ssh.py"),
+        ("Configure fail2ban", "./actions/configure_fail2ban.py"),
+        ("Disable auto updates", "./actions/disable_auto_updates.py"),
+        ("Configure SSH", "../actions/configure_ssh.py"),
     ]),
     ("Configure Performance", [
-        ("Configure swap", "configure_swap.py"),
-        ("Set CPUs to performance mode", "set-cpus-performance.sh"),
+        ("Configure swap", "./actions/configure_swap.py"),
+        ("Set CPUs to performance mode", "./actions/set-cpus-performance.sh"),
     ]),
 ]
 
@@ -70,6 +74,10 @@ def run_script(script):
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running {script}: {e}\nStdout: {e.stdout}\nStderr: {e.stderr}")
         print(f"[FAIL] {script}")
+        if e.stdout:
+            print(f"[STDOUT] {e.stdout}")
+        if e.stderr:
+            print(f"[STDERR] {e.stderr}")
 
 def main():
     print("Starting workflow at", datetime.now())
