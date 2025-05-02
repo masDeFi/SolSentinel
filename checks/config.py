@@ -41,13 +41,14 @@ def run_sysctl_check(param, expected):
 
     # Special case for vm.swappiness: current should be 0
     if param == "vm.swappiness":
+        max_swappiness = 20
         try:
-            if int(current) == 0:
+            if int(current) <= max_swappiness:
                 result["status"] = "PASS"
-                result["message"] = f"{param} is acceptable: {current} (max allowed: 30)"
+                result["message"] = f"{param} is acceptable: {current} (max allowed: {max_swappiness})"
             else:
                 result["status"] = "FAIL"
-                result["message"] = f"{param} is too high. Current: {current}, Maximum: 30."
+                result["message"] = f"{param} is too high. Current: {current}, Maximum: {max_swappiness}."
             return result
         except ValueError:
             result["status"] = "FAIL"
