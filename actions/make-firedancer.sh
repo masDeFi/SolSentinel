@@ -32,16 +32,17 @@ log "⏱️ Make command took $DURATION seconds."
 # Check if make command was successful
 if [ $? -eq 0 ]; then
     log "✅ Build completed successfully."
-
-    log "Stopping Validator Service"
-    sudo systemctl stop frankendancer.service
-    log "Validator Service Stopped "
-
-    # Log reboot and execute it
-    log "🔄 Rebooting system to apply changes..."
-    echo "Rebooting at $(date)" >> "$LOG_FILE"
-    sudo reboot
 else
     log "❌ Build failed. Not rebooting."
 fi
 
+# separate script for stopping the validator service
+
+# log "Stopping Validator Service"
+# sudo systemctl stop frankendancer.service
+# log "Validator Service Stopped "
+
+# # Log reboot and execute it
+# log "🔄 Rebooting system to apply changes..."
+# echo "Rebooting at $(date)" >> "$LOG_FILE"
+# sudo reboot
