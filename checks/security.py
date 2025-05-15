@@ -103,7 +103,7 @@ def check_solana_logrotate():
     """Check for a Solana-related logrotate configuration."""
     result = {"name": "Solana Logrotate Check", "status": "PASS", "message": "", "category": "Security"}
     logrotate_dir = "/etc/logrotate.d"
-    solana_patterns = ["sol", "solana", "solana-validator"]
+    solana_patterns = ["sol", "solana", "solana-validator", "frankendancer", "firedancer"]
     found = False
     config_file = None
     if not shutil.which("logrotate"):
