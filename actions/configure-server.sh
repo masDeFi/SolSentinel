@@ -17,7 +17,7 @@ log "🚀 Starting configure server setup."
 
 # Step 1: Mount Drives
 log "🗄️ Mounting drives..."
-if $BASE_PATH/mount-drives.sh >> "$LOG_FILE" 2>&1; then
+if $BASE_PATH/bin/mount-drives.sh >> "$LOG_FILE" 2>&1; then
     log "✅ Drives mounted successfully."
 else
     log "❌ ERROR: Failed to mount drives!"

@@ -105,19 +105,30 @@ Detects whether a system reboot is needed to complete the installation of critic
 
 ## Flows
 ### Update Firedancer flow  
+```sh
 cd SolSentinal/actions  
+
 ./update-firedancer.sh v<version>  
- - Updating deps requires manually approval  
+# - Updating deps requires manually approval  
 
 ./make-firedancer.sh 
- - Make will cause validator to go delinquent  
- - Make takes ~ 3.5 minutes
+ # - Make will cause validator to go delinquent  
+ # - Make takes ~ 3.5 minutes
 
-sudo reboot (takes ~ 2.5 minutes)
+# Confirm make version 
+../../code/firedancer/build/native/gcc/bin/fdctl --version
+# If version matches then reboot (takes ~ 2.5 minutes)
+sudo reboot 
+
 
 ./configure-server.sh  
 ./configure-firedancer.sh  
+```
+If you see a log like: ***pack cpu 5 has hyperthread pair cpu 29 which should be offline. Proceeding but performance may be reduced.***. Fix with the command below for each instance:
+```sh
+echo 0 | sudo tee /sys/devices/system/cpu/cpu29/online
 ./start-firedancer.sh  
+```
   
 ## Contributing
 This project is open source. Please review and contribute!
