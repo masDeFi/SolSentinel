@@ -16,7 +16,22 @@
 - Package update summaries
 - Action suggestions
 
+### Current Directory Structure
 
+/mnt
+  - /ledger
+  - /account
+
+/home/user/code
+  - firedancer/
+
+/home/user/
+  - mount-drives.sh 
+  - (simlink)active-fd-config.toml->fd-config.toml
+  - logs/ 
+  - /SolSentinal 
+
+Files in /home/user store server specific configs 
 ## Project Structure
 ```
 /SolSentinel
@@ -36,6 +51,8 @@
 
 
 ## Usage
+1. Clone the repo   
+2. Use the scripts  
 
 ### Running Checks
 
@@ -86,7 +103,21 @@ Detects whether a system reboot is needed to complete the installation of critic
 - **Purpose:** Guarantees that all security fixes and functionality improvements are actually active by confirming that any required reboot has been performed.  
 - **Recommended Action:** Schedule and perform a reboot whenever this check reports "required" to ensure the system is running the latest code.  
 
+## Flows
+### Update Firedancer flow  
+cd SolSentinal/actions  
+./update-firedancer.sh v<version>  
+ - Updating deps requires manually approval  
 
+./make-firedancer.sh 
+ - Make will cause validator to go delinquent  
+ - Make takes ~ 3.5 minutes
+
+sudo reboot (takes ~ 2.5 minutes)
+
+./configure-server.sh  
+./configure-firedancer.sh  
+./start-firedancer.sh  
   
 ## Contributing
 This project is open source. Please review and contribute!
