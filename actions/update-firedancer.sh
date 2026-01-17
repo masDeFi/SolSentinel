@@ -1,17 +1,24 @@
 #!/bin/bash
-
 # update-firedancer.sh
-
-# This script updates the Firedancer software to a specified tag.
-# It accepts a tag as a command-line argument, checks out the main branch,
-# fetches the latest updates, checks out the specified tag, creates a new branch,
-# and installs dependencies using deps.sh. 
-# All actions are logged to a specified log file.
+# This script updates Firedancer to a specified git tag
+# Works both when run via sudo and when run directly as a user
 
 # Set variables
 TAG="$1"  # Accepts tag as a command-line argument
 
-BASE_PATH=$(eval echo ~$SUDO_USER)
+# Determine the correct base path
+# Priority: $SUDO_USER home > $USER home > $HOME
+if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+    # Running via sudo - use the original user's home
+    BASE_PATH=$(eval echo ~$SUDO_USER)
+elif [ -n "$USER" ] && [ "$USER" != "root" ]; then
+    # Running as non-root user directly
+    BASE_PATH=$(eval echo ~$USER)
+else
+    # Fallback to $HOME
+    BASE_PATH="$HOME"
+fi
+
 LOG_FILE="$BASE_PATH/logs/firedancer-update.log"
 REPO_DIR="$BASE_PATH/code/firedancer"
 
@@ -25,6 +32,8 @@ mkdir -p "$(dirname "$LOG_FILE")"
         exit 1
     else
         echo "[$(date)] 🔥 Updating Firedancer to tag: $TAG"
+        echo "📁 Base path: $BASE_PATH"
+        echo "📁 Repository: $REPO_DIR"
     fi
 
     # Navigate to repo
@@ -40,16 +49,19 @@ mkdir -p "$(dirname "$LOG_FILE")"
     echo "🏷️ Fetching tags..."
     git fetch --tags
 
-    echo "🔄 Checking out tag: $TAG..."
-    git checkout "$TAG"
-
-    echo "🌿 Creating new branch: $TAG"
-    git switch -c "$TAG"
+    echo "🌿 Preparing version: $TAG"
+    # Try to create a new branch from the tag; fall back to checkout if it exists
+    if git switch -c "$TAG" "$TAG" 2>/dev/null; then
+        echo "🆕 Created and switched to new branch: $TAG"
+    else
+        git checkout "$TAG"
+        echo "↪️ Switched to existing branch/tag: $TAG"
+    fi
 
     echo "✅ Done! Now on branch: $(git branch --show-current)"
 
     echo "Updating Sub modules"
-    git submodule update
+    git submodule update --init --recursive
 
     echo "✅ Done Updating Sub modules"
 
@@ -58,4 +70,4 @@ mkdir -p "$(dirname "$LOG_FILE")"
     echo "deps.sh ran successfully!"
 
     echo "[$(date)] 🎉 Update complete."
-} | tee -a "$LOG_FILE"
+} 2>&1 | tee -a "$LOG_FILE"
