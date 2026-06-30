@@ -1,27 +1,20 @@
 #!/bin/bash
 # make-firedancer.sh - Build Firedancer with proper exit code handling
 
-# Configurations
-# Determine the correct base path (same logic as update-firedancer.sh)
-if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
-    BASE_PATH=$(eval echo ~$SUDO_USER)
-elif [ -n "$USER" ] && [ "$USER" != "root" ]; then
-    BASE_PATH=$(eval echo ~$USER)
-else
-    BASE_PATH="$HOME"
-fi
+# Shared base-path resolution and log() helper (kept identical to
+# update-firedancer.sh so both scripts resolve the same REPO_DIR).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/firedancer-common.sh
+source "$SCRIPT_DIR/lib/firedancer-common.sh"
 
+# Configurations
+BASE_PATH="$(resolve_base_path)"
 LOG_DIR="$BASE_PATH/logs"
 LOG_FILE="$LOG_DIR/validator-make-reboot.log"
 REPO_DIR="$BASE_PATH/code/firedancer"
 
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
-
-# Function to log messages
-log() {
-    echo "[$(date)] $1" | tee -a "$LOG_FILE"
-}
 
 log "🚀 Starting Firedancer make and reboot process! This next step will cause the validator to go delinquent!!"
 log "📁 Base path: $BASE_PATH"

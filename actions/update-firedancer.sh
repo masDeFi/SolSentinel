@@ -1,76 +1,88 @@
 #!/bin/bash
 # update-firedancer.sh
-# This script updates the Firedancer checkout to a specified git tag and
-# installs its dependencies (deps.sh). The actual build is done separately
-# by make-firedancer.sh.
+# Updates the Firedancer checkout to a specified git ref (normally a release
+# tag) and installs its dependencies (deps.sh). The actual build is done
+# separately by make-firedancer.sh.
 #
-# Works both when run via sudo and when run directly as a user.
+# Usage: ./update-firedancer.sh <git-ref>
+#
+# Works whether run directly as the validator user or via sudo. When invoked
+# via sudo it re-execs as the original user so the checkout and dependency
+# files are owned by that user (not root), keeping a later non-sudo build and
+# `git` operations working.
 #
 # Exit codes propagate to the caller: any failure aborts and returns non-zero.
 
 set -euo pipefail
 
-# Accept tag as a command-line argument (no `set -u` blow-up if omitted)
-TAG="${1:-}"
+# Resolve our own absolute path before anything else so the re-exec below is
+# robust regardless of the caller's cwd.
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-# Determine the correct base path (same logic as make-firedancer.sh)
-# Priority: $SUDO_USER home > $USER home > $HOME
-if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
-    # Running via sudo - use the original user's home
-    BASE_PATH=$(getent passwd "$SUDO_USER" | cut -d: -f6)
-elif [ -n "${USER:-}" ] && [ "$USER" != "root" ]; then
-    # Running as non-root user directly
-    BASE_PATH=$(getent passwd "$USER" | cut -d: -f6)
-else
-    # Fallback to $HOME
-    BASE_PATH="$HOME"
+# If invoked as root via sudo, drop back to the invoking user so git and
+# deps.sh do not leave root-owned files under the user's home.
+if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+    exec sudo -u "$SUDO_USER" -H bash "$SCRIPT_PATH" "$@"
 fi
 
-# getent can return empty for users without a passwd entry; fall back to $HOME
-[ -n "$BASE_PATH" ] || BASE_PATH="$HOME"
+# Shared base-path resolution and log() helper.
+# shellcheck source=lib/firedancer-common.sh
+source "$SCRIPT_DIR/lib/firedancer-common.sh"
 
+# Accept the ref as a command-line argument (empty if omitted; no set -u blow-up)
+REF="${1:-}"
+
+BASE_PATH="$(resolve_base_path)"
 LOG_DIR="$BASE_PATH/logs"
 LOG_FILE="$LOG_DIR/firedancer-update.log"
 REPO_DIR="$BASE_PATH/code/firedancer"
 
-# Ensure logging directory exists before we try to write to it
+# Ensure the logging directory exists before we try to write to it.
 mkdir -p "$LOG_DIR" || { echo "❌ ERROR: Could not create log directory $LOG_DIR"; exit 1; }
 
-# Log a message to stdout and the log file
-log() {
-    echo "[$(date)] $1" | tee -a "$LOG_FILE"
-}
-
-# Validate input
-if [ -z "$TAG" ]; then
-    log "❌ ERROR: No tag provided. Usage: $0 <git-tag>"
+# Validate input.
+if [ -z "$REF" ]; then
+    log "❌ ERROR: No git ref provided. Usage: $0 <git-ref>"
     exit 1
 fi
 
-log "🔥 Updating Firedancer to tag: $TAG"
+log "🔥 Updating Firedancer to ref: $REF"
 log "📁 Base path: $BASE_PATH"
 log "📁 Repository: $REPO_DIR"
 
-# Navigate to repo and confirm it is a git working tree
+# Navigate to the repo and confirm it is a git working tree.
 cd "$REPO_DIR" || { log "❌ ERROR: Failed to change directory to $REPO_DIR"; exit 1; }
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || { log "❌ ERROR: $REPO_DIR is not a git repository"; exit 1; }
 
-# Fetch latest refs and tags up front (this is what makes $TAG resolvable)
-log "📥 Fetching latest refs and tags..."
-git fetch --all --tags --prune 2>&1 | tee -a "$LOG_FILE"
-
-# Validate the requested tag exists before touching the working tree
-if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-    log "❌ ERROR: Tag '$TAG' not found in repository after fetch"
+# Refuse to switch refs over uncommitted changes: a detached checkout would
+# otherwise abort with a cryptic git error (or clobber work). Submodule state
+# is ignored here — `git submodule update` below reconciles it. Fail loudly
+# instead of letting set -e kill the script with no explanation.
+if ! git diff --quiet --ignore-submodules || ! git diff --cached --quiet --ignore-submodules; then
+    log "❌ ERROR: working tree has uncommitted changes; commit or stash them before updating"
     exit 1
 fi
 
-# Check out the tag in detached HEAD. This avoids polluting the branch
-# namespace and the tag/branch name-collision ambiguity that a local
-# branch named after the tag would create on repeated runs.
-log "🌿 Checking out version: $TAG"
-git checkout --detach "tags/$TAG" 2>&1 | tee -a "$LOG_FILE"
+# Fetch the latest refs and tags from origin only. (--all would contact every
+# configured remote and abort the whole update if an unrelated extra remote is
+# unreachable or auth-gated.)
+log "📥 Fetching latest refs and tags from origin..."
+git fetch --tags origin 2>&1 | tee -a "$LOG_FILE"
+
+# Validate the ref resolves to a commit. `^{commit}` accepts tags, branches,
+# and raw SHAs, preserving the previous script's acceptance of any commit-ish.
+if ! git rev-parse -q --verify "${REF}^{commit}" >/dev/null 2>&1; then
+    log "❌ ERROR: ref '$REF' not found in repository after fetch"
+    exit 1
+fi
+
+# Check out the ref in detached HEAD: avoids polluting the branch namespace and
+# the tag/branch name-collision ambiguity that a local branch named after a tag
+# would create on repeated runs.
+log "🌿 Checking out ref: $REF"
+git checkout --detach "$REF" 2>&1 | tee -a "$LOG_FILE"
 
 log "✅ Now at: $(git describe --tags --always)"
 
@@ -78,8 +90,13 @@ log "🔁 Updating submodules..."
 git submodule update --init --recursive 2>&1 | tee -a "$LOG_FILE"
 log "✅ Submodules updated"
 
-log "📦 Installing dependencies (deps.sh)..."
-./deps.sh 2>&1 | tee -a "$LOG_FILE"
+# Run deps.sh attached to the terminal (NOT piped through tee) so its manual
+# approval prompt stays visible and interactive, as the README flow requires.
+log "📦 Installing dependencies (deps.sh) — approve the prompt if asked..."
+if ! ./deps.sh; then
+    log "❌ ERROR: deps.sh failed"
+    exit 1
+fi
 log "✅ deps.sh ran successfully"
 
 log "🎉 Update complete. Run make-firedancer.sh to build."
