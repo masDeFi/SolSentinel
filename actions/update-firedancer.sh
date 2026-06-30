@@ -1,73 +1,85 @@
 #!/bin/bash
 # update-firedancer.sh
-# This script updates Firedancer to a specified git tag
-# Works both when run via sudo and when run directly as a user
+# This script updates the Firedancer checkout to a specified git tag and
+# installs its dependencies (deps.sh). The actual build is done separately
+# by make-firedancer.sh.
+#
+# Works both when run via sudo and when run directly as a user.
+#
+# Exit codes propagate to the caller: any failure aborts and returns non-zero.
 
-# Set variables
-TAG="$1"  # Accepts tag as a command-line argument
+set -euo pipefail
 
-# Determine the correct base path
+# Accept tag as a command-line argument (no `set -u` blow-up if omitted)
+TAG="${1:-}"
+
+# Determine the correct base path (same logic as make-firedancer.sh)
 # Priority: $SUDO_USER home > $USER home > $HOME
-if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
     # Running via sudo - use the original user's home
-    BASE_PATH=$(eval echo ~$SUDO_USER)
-elif [ -n "$USER" ] && [ "$USER" != "root" ]; then
+    BASE_PATH=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+elif [ -n "${USER:-}" ] && [ "$USER" != "root" ]; then
     # Running as non-root user directly
-    BASE_PATH=$(eval echo ~$USER)
+    BASE_PATH=$(getent passwd "$USER" | cut -d: -f6)
 else
     # Fallback to $HOME
     BASE_PATH="$HOME"
 fi
 
-LOG_FILE="$BASE_PATH/logs/firedancer-update.log"
+# getent can return empty for users without a passwd entry; fall back to $HOME
+[ -n "$BASE_PATH" ] || BASE_PATH="$HOME"
+
+LOG_DIR="$BASE_PATH/logs"
+LOG_FILE="$LOG_DIR/firedancer-update.log"
 REPO_DIR="$BASE_PATH/code/firedancer"
 
-# Ensure logging directory exists
-mkdir -p "$(dirname "$LOG_FILE")"
+# Ensure logging directory exists before we try to write to it
+mkdir -p "$LOG_DIR" || { echo "❌ ERROR: Could not create log directory $LOG_DIR"; exit 1; }
 
-# Start logging
-{
-    if [ -z "$TAG" ]; then
-        echo "❌ ERROR: No tag provided."
-        exit 1
-    else
-        echo "[$(date)] 🔥 Updating Firedancer to tag: $TAG"
-        echo "📁 Base path: $BASE_PATH"
-        echo "📁 Repository: $REPO_DIR"
-    fi
+# Log a message to stdout and the log file
+log() {
+    echo "[$(date)] $1" | tee -a "$LOG_FILE"
+}
 
-    # Navigate to repo
-    cd "$REPO_DIR" || { echo "❌ ERROR: Failed to change directory to $REPO_DIR"; exit 1; }
+# Validate input
+if [ -z "$TAG" ]; then
+    log "❌ ERROR: No tag provided. Usage: $0 <git-tag>"
+    exit 1
+fi
 
-    # Checkout main and fetch latest updates
-    echo "🔄 Checking out main branch..."
-    git checkout main
+log "🔥 Updating Firedancer to tag: $TAG"
+log "📁 Base path: $BASE_PATH"
+log "📁 Repository: $REPO_DIR"
 
-    echo "📥 Pulling latest changes..."
-    git pull
+# Navigate to repo and confirm it is a git working tree
+cd "$REPO_DIR" || { log "❌ ERROR: Failed to change directory to $REPO_DIR"; exit 1; }
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+    || { log "❌ ERROR: $REPO_DIR is not a git repository"; exit 1; }
 
-    echo "🏷️ Fetching tags..."
-    git fetch --tags
+# Fetch latest refs and tags up front (this is what makes $TAG resolvable)
+log "📥 Fetching latest refs and tags..."
+git fetch --all --tags --prune 2>&1 | tee -a "$LOG_FILE"
 
-    echo "🌿 Preparing version: $TAG"
-    # Try to create a new branch from the tag; fall back to checkout if it exists
-    if git switch -c "$TAG" "$TAG" 2>/dev/null; then
-        echo "🆕 Created and switched to new branch: $TAG"
-    else
-        git checkout "$TAG"
-        echo "↪️ Switched to existing branch/tag: $TAG"
-    fi
+# Validate the requested tag exists before touching the working tree
+if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+    log "❌ ERROR: Tag '$TAG' not found in repository after fetch"
+    exit 1
+fi
 
-    echo "✅ Done! Now on branch: $(git branch --show-current)"
+# Check out the tag in detached HEAD. This avoids polluting the branch
+# namespace and the tag/branch name-collision ambiguity that a local
+# branch named after the tag would create on repeated runs.
+log "🌿 Checking out version: $TAG"
+git checkout --detach "tags/$TAG" 2>&1 | tee -a "$LOG_FILE"
 
-    echo "Updating Sub modules"
-    git submodule update --init --recursive
+log "✅ Now at: $(git describe --tags --always)"
 
-    echo "✅ Done Updating Sub modules"
+log "🔁 Updating submodules..."
+git submodule update --init --recursive 2>&1 | tee -a "$LOG_FILE"
+log "✅ Submodules updated"
 
-    echo "Install dependencies -- deps.sh"
-    ./deps.sh || { echo "❌ ERROR: Failed to execute deps.sh"; exit 1; }
-    echo "deps.sh ran successfully!"
+log "📦 Installing dependencies (deps.sh)..."
+./deps.sh 2>&1 | tee -a "$LOG_FILE"
+log "✅ deps.sh ran successfully"
 
-    echo "[$(date)] 🎉 Update complete."
-} 2>&1 | tee -a "$LOG_FILE"
+log "🎉 Update complete. Run make-firedancer.sh to build."
