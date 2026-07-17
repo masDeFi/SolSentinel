@@ -45,6 +45,7 @@ ACTIVE_IDENTITY="$BASE_PATH/active-identity.json"
 FDCTL="$REPO_DIR/build/native/gcc/bin/fdctl"
 SOLANA_BIN_DIR="$BASE_PATH/.local/share/solana/install/active_release/bin"
 CONFIGURE_SCRIPT="${FIREDANCER_CONFIGURE_SCRIPT:-$SCRIPT_DIR/configure-firedancer.sh}"
+START_SCRIPT="${FIREDANCER_START_SCRIPT:-$SCRIPT_DIR/start-firedancer.sh}"
 SERVICE_STOPPED_BY_SCRIPT=false
 UPDATE_COMPLETE=false
 
@@ -86,6 +87,7 @@ expected_version_for_ref() {
         v0.904.40006) printf '%s\n' "0.33672.40006" ;;
         v0.905.40007) printf '%s\n' "0.33673.40007" ;;
         v0.1004.40101) printf '%s\n' "0.1004.0-rc.40101" ;;
+        v0.1101.40201) printf '%s\n' "0.1101.0-beta.40201" ;;
         v0.1102.40201) printf '%s\n' "0.1102.0-beta.40201" ;;
         v[0-9]*.[0-9]*.[0-9]*) printf '%s\n' "${1#v}" ;;
         [0-9]*.[0-9]*.[0-9]*) printf '%s\n' "$1" ;;
@@ -141,6 +143,7 @@ if [ -z "$EXPECTED_FDCTL_VERSION" ]; then
 fi
 EXPECTED_FDCTL_VERSION="${EXPECTED_FDCTL_VERSION#v}"
 [ -x "$CONFIGURE_SCRIPT" ] || fail "Configure script is not executable: $CONFIGURE_SCRIPT"
+[ -x "$START_SCRIPT" ] || fail "Start script is not executable: $START_SCRIPT"
 
 [ -d "$REPO_DIR" ] || fail "Firedancer repository does not exist: $REPO_DIR"
 cd "$REPO_DIR"
@@ -250,8 +253,12 @@ fi
 assert_non_primary_identity "pre-start" \
     || fail "Validator will not be started with the primary identity"
 
-log "Starting $SERVICE_NAME..."
-sudo systemctl start "$SERVICE_NAME"
+log "Starting $SERVICE_NAME with start-firedancer.sh..."
+if SUDO_USER="$(id -un)" HOME="$BASE_PATH" "$START_SCRIPT"; then
+    log "start-firedancer.sh completed successfully"
+else
+    fail "start-firedancer.sh failed"
+fi
 STARTED_STATE="$(service_active_state)"
 [ "$STARTED_STATE" = active ] \
     || fail "$SERVICE_NAME did not become active (state: ${STARTED_STATE:-unknown})"
