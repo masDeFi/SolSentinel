@@ -105,33 +105,44 @@ Detects whether a system reboot is needed to complete the installation of critic
 
 ## Flows
 ### Update Firedancer flow  
+
+For the complete safety-gated workflow:
+
 ```sh
 cd ~/SolSentinel/actions
 
-# Schedule a maintenance window and stop the validator before replacing it.
+# Run the complete safety-gated update. Approve the deps.sh prompt if asked.
+# The script refuses to stop a running validator that is using the primary
+# identity, then stops, updates, builds, verifies, configures, restarts, checks
+# identity again, and streams catchup progress until the validator is caught up.
+./complete_update_firedancer.sh v<version>
+```
+
+For unusual tags whose `fdctl version` output differs from the tag, pass the
+expected output as a second argument. `SOLANA_RPC_URL` can override the Solana
+CLI's configured RPC during the catchup wait:
+
+```sh
+SOLANA_RPC_URL=https://api.mainnet-beta.solana.com \
+  ./complete_update_firedancer.sh v<tag> <expected-fdctl-version>
+```
+
+The original staged workflow remains available as a fallback:
+
+```sh
 sudo systemctl stop frankendancer.service
-
-# Fetch the release and install its dependencies. Approve the deps.sh prompt
-# if asked. Run as the validator user; using sudo is also supported.
 ./update-firedancer.sh v<version>
-
-# Build Firedancer. This typically takes about 3.5 minutes.
 ./make-firedancer.sh
-
-# Confirm the built version matches the requested release.
 ~/code/firedancer/build/native/gcc/bin/fdctl version
-
-# Initialize the updated configuration and start the validator. The configure
-# script requests sudo internally while retaining the validator user's HOME.
 ./configure-firedancer.sh
 sudo systemctl start frankendancer.service
-
-# Confirm the service is healthy.
 sudo systemctl status frankendancer.service
-sudo journalctl -u frankendancer.service -n 200
 ```
-The update and build scripts do not reboot the server. Reboot only when an OS
-update or configuration change separately requires one.
+
+Neither workflow reboots the server. If the complete update fails after
+stopping the service, it deliberately leaves the service stopped rather than
+starting an unverified or unconfigured build. Reboot only when an OS update or
+configuration change separately requires one.
 
 If you see a log like: ***pack cpu 5 has hyperthread pair cpu 29 which should be offline. Proceeding but performance may be reduced.***. Fix with the command below for each instance:
 ```sh
