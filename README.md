@@ -106,24 +106,33 @@ Detects whether a system reboot is needed to complete the installation of critic
 ## Flows
 ### Update Firedancer flow  
 ```sh
-cd SolSentinal/actions  
+cd ~/SolSentinel/actions
 
-./update-firedancer.sh v<version>  
-# - Updating deps requires manually approval  
+# Schedule a maintenance window and stop the validator before replacing it.
+sudo systemctl stop frankendancer.service
 
-./make-firedancer.sh 
- # - Make will cause validator to go delinquent  
- # - Make takes ~ 3.5 minutes
+# Fetch the release and install its dependencies. Approve the deps.sh prompt
+# if asked. Run as the validator user; using sudo is also supported.
+./update-firedancer.sh v<version>
 
-# Confirm make version 
-../../code/firedancer/build/native/gcc/bin/fdctl --version
-# If version matches then reboot (takes ~ 2.5 minutes)
-sudo reboot 
+# Build Firedancer. This typically takes about 3.5 minutes.
+./make-firedancer.sh
 
+# Confirm the built version matches the requested release.
+~/code/firedancer/build/native/gcc/bin/fdctl version
 
-./configure-server.sh  
-./configure-firedancer.sh  
+# Initialize the updated configuration and start the validator. The configure
+# script requests sudo internally while retaining the validator user's HOME.
+./configure-firedancer.sh
+sudo systemctl start frankendancer.service
+
+# Confirm the service is healthy.
+sudo systemctl status frankendancer.service
+sudo journalctl -u frankendancer.service -n 200
 ```
+The update and build scripts do not reboot the server. Reboot only when an OS
+update or configuration change separately requires one.
+
 If you see a log like: ***pack cpu 5 has hyperthread pair cpu 29 which should be offline. Proceeding but performance may be reduced.***. Fix with the command below for each instance:
 ```sh
 echo 0 | sudo tee /sys/devices/system/cpu/cpu29/online

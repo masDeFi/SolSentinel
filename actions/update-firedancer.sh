@@ -26,6 +26,14 @@ if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]
     exec sudo -u "$SUDO_USER" -H bash "$SCRIPT_PATH" "$@"
 fi
 
+# A direct root login has no safe user to drop privileges to. Refuse it rather
+# than creating root-owned files in /root or in a validator checkout.
+if [ "$(id -u)" -eq 0 ]; then
+    echo "❌ ERROR: Do not run as a root login." \
+        "Run as the validator user or use sudo from that user." >&2
+    exit 1
+fi
+
 # Shared base-path resolution and log() helper.
 # shellcheck source=lib/firedancer-common.sh
 source "$SCRIPT_DIR/lib/firedancer-common.sh"
@@ -56,12 +64,14 @@ cd "$REPO_DIR" || { log "❌ ERROR: Failed to change directory to $REPO_DIR"; ex
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 \
     || { log "❌ ERROR: $REPO_DIR is not a git repository"; exit 1; }
 
-# Refuse to switch refs over uncommitted changes: a detached checkout would
-# otherwise abort with a cryptic git error (or clobber work). Submodule state
-# is ignored here — `git submodule update` below reconciles it. Fail loudly
-# instead of letting set -e kill the script with no explanation.
-if ! git diff --quiet --ignore-submodules || ! git diff --cached --quiet --ignore-submodules; then
-    log "❌ ERROR: working tree has uncommitted changes; commit or stash them before updating"
+# Refuse to switch refs over tracked or untracked changes: a detached checkout
+# could otherwise abort with a cryptic error or leave files from another
+# version in the tree. Submodule state is ignored here — `git submodule
+# update` below reconciles it.
+if ! git diff --quiet --ignore-submodules \
+    || ! git diff --cached --quiet --ignore-submodules \
+    || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+    log "❌ ERROR: working tree has changes; commit, stash (including untracked files), or remove them before updating"
     exit 1
 fi
 
